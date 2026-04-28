@@ -22,10 +22,16 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     gap: 12px;
   }
-  .header-left {}
+  .brand-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #c0392b;
+    margin-bottom: 5px;
+  }
   .model-name {
     font-size: 17px;
     font-weight: 600;
@@ -38,7 +44,7 @@
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #666;
+    color: #555;
     margin-top: 4px;
   }
   .badge {
@@ -54,26 +60,15 @@
     flex-shrink: 0;
   }
 
-  /* ── Chart ── */
-  .chart-wrap {
-    position: relative;
-    background: #151515;
-    border: 1px solid #222;
-    border-radius: 6px;
-    padding: 16px 12px 12px;
-    margin-bottom: 16px;
-  }
-  canvas { display: block; width: 100% !important; }
-
   /* ── Spec cards ── */
   .specs-grid {
     display: grid;
     gap: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   .specs-grid.two   { grid-template-columns: 1fr 1fr; }
   .specs-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-  .specs-grid.one   { grid-template-columns: 1fr; max-width: 280px; }
+  .specs-grid.one   { grid-template-columns: 1fr; max-width: 320px; }
 
   .spec-card {
     background: #161616;
@@ -103,17 +98,16 @@
 
   .spec-description {
     font-size: 11px;
-    color: #888;
+    color: #777;
     line-height: 1.4;
     margin-bottom: 10px;
   }
   .spec-metrics {
     display: flex;
     gap: 14px;
-    border-top: 1px solid #222;
+    border-top: 1px solid #1e1e1e;
     padding-top: 8px;
   }
-  .metric {}
   .metric-label {
     font-size: 8px;
     letter-spacing: 0.1em;
@@ -131,7 +125,7 @@
   .legend {
     display: flex;
     gap: 16px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
   }
   .legend-item {
@@ -160,6 +154,17 @@
     height: 0;
   }
 
+  /* ── Chart ── */
+  .chart-wrap {
+    position: relative;
+    background: #151515;
+    border: 1px solid #1e1e1e;
+    border-radius: 6px;
+    padding: 16px 12px 12px;
+    margin-bottom: 20px;
+  }
+  canvas { display: block; width: 100% !important; }
+
   /* ── Footer ── */
   .footer {
     border-top: 1px solid #1e1e1e;
@@ -172,10 +177,10 @@
   }
   .footer-method {
     font-size: 9px;
-    color: #444;
+    color: #3a3a3a;
     line-height: 1.6;
     letter-spacing: 0.04em;
-    max-width: 440px;
+    max-width: 480px;
   }
   .footer-brand {
     font-size: 10px;
@@ -185,7 +190,7 @@
     white-space: nowrap;
   }
 
-  /* ── Error / Loading ── */
+  /* ── States ── */
   .state-msg {
     text-align: center;
     padding: 60px 20px;
@@ -208,42 +213,21 @@
   const POSITION_ORDER = ["bridge", "middle", "neck"];
 
   const POS_STYLE = {
-    bridge: {
-      label:     "Bridge",
-      color:     "#3b82f6",
-      borderDash: [],
-    },
-    middle: {
-      label:     "Middle",
-      color:     "#f59e0b",
-      borderDash: [6, 3],
-    },
-    neck: {
-      label:     "Neck",
-      color:     "#c026d3",
-      borderDash: [6, 3],
-    },
+    bridge: { label: "Bridge", color: "#3b82f6", borderDash: [] },
+    middle: { label: "Middle", color: "#f59e0b", borderDash: [6, 3] },
+    neck:   { label: "Neck",   color: "#c026d3", borderDash: [6, 3] },
   };
 
-  // ── Resolve ?set= param ────────────────────────────────────────────────────
   const params = new URLSearchParams(window.location.search);
   const setKey = (params.get("set") || "").trim().toLowerCase();
 
-  if (!setKey) {
-    showError("No pickup set specified.");
-    return;
-  }
+  if (!setKey) { showError("No pickup set specified."); return; }
 
-  // ── Fetch JSON ─────────────────────────────────────────────────────────────
   fetch(`freqsets/${setKey}.json`)
-    .then(r => {
-      if (!r.ok) throw new Error(`Set "${setKey}" not found.`);
-      return r.json();
-    })
+    .then(r => { if (!r.ok) throw new Error(`Set "${setKey}" not found.`); return r.json(); })
     .then(render)
     .catch(err => showError(err.message));
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   function render(data) {
     const positions = POSITION_ORDER.filter(p => data[p]);
     const app = document.getElementById("app");
@@ -251,19 +235,20 @@
     app.innerHTML = `
       <div class="header">
         <div class="header-left">
+          <div class="brand-label">Rainy Day Sound Labs</div>
           <div class="model-name">${data.model}</div>
           <div class="model-subtitle">${data.subtitle}</div>
         </div>
         <div class="badge">REW Verified Measurements</div>
       </div>
 
+      <div class="specs-grid ${gridClass(positions)}" id="specCards"></div>
+
       ${buildLegend(positions)}
 
       <div class="chart-wrap">
         <canvas id="freqChart" height="260"></canvas>
       </div>
-
-      <div class="specs-grid ${gridClass(positions)}" id="specCards"></div>
 
       <div class="footer">
         <div class="footer-method">
@@ -275,8 +260,8 @@
       </div>
     `;
 
-    buildChart(data, positions);
     buildCards(data, positions);
+    buildChart(data, positions);
   }
 
   function buildLegend(positions) {
@@ -285,8 +270,7 @@
       <div class="legend-item">
         <div class="legend-line ${p}"></div>
         <span>${POS_STYLE[p].label}</span>
-      </div>
-    `).join("");
+      </div>`).join("");
     return `<div class="legend">${items}</div>`;
   }
 
@@ -294,81 +278,8 @@
     return ["one", "two", "three"][positions.length - 1] || "two";
   }
 
-  function buildChart(data, positions) {
-    const labels = data[positions[0]].data.map(pt => pt[0]);
-
-    const datasets = positions.map(p => ({
-      label:           POS_STYLE[p].label,
-      data:            data[p].data.map(pt => pt[1]),
-      borderColor:     POS_STYLE[p].color,
-      borderWidth:     1.75,
-      borderDash:      POS_STYLE[p].borderDash,
-      pointRadius:     0,
-      tension:         0.3,
-      fill:            false,
-    }));
-
-    const ctx = document.getElementById("freqChart").getContext("2d");
-
-    new Chart(ctx, {
-      type: "line",
-      data: { labels, datasets },
-      options: {
-        responsive:          true,
-        maintainAspectRatio: false,
-        animation:           false,
-        interaction: { mode: "index", intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: "#1a1a1a",
-            borderColor:     "#333",
-            borderWidth:     1,
-            titleColor:      "#aaa",
-            bodyColor:       "#ddd",
-            titleFont:       { size: 10 },
-            bodyFont:        { size: 11 },
-            callbacks: {
-              title: items => fmtHz(items[0].parsed.x),
-              label: item  => ` ${item.dataset.label}:  ${item.parsed.y.toFixed(1)} dB`,
-            },
-          },
-        },
-        scales: {
-          x: {
-            type:   "logarithmic",
-            min:    20,
-            max:    20000,
-            grid:   { color: "#1e1e1e" },
-            ticks: {
-              color:    "#444",
-              maxRotation: 0,
-              autoSkip: true,
-              maxTicksLimit: 10,
-              callback: v => fmtHz(v),
-            },
-          },
-          y: {
-            title: {
-              display: true,
-              text:    "Relative Output (dB below peak)",
-              color:   "#444",
-              font:    { size: 9 },
-              padding: { bottom: 6 },
-            },
-            min:    -30,
-            max:    2,
-            grid:   { color: "#1e1e1e" },
-            ticks:  { color: "#444", callback: v => `${v} dB` },
-          },
-        },
-      },
-    });
-  }
-
   function buildCards(data, positions) {
-    const grid = document.getElementById("specCards");
-    grid.innerHTML = positions.map(p => {
+    document.getElementById("specCards").innerHTML = positions.map(p => {
       const s = data[p];
       return `
         <div class="spec-card">
@@ -385,9 +296,75 @@
               <div class="metric-value">${s.dcr}</div>
             </div>
           </div>
-        </div>
-      `;
+        </div>`;
     }).join("");
+  }
+
+  function buildChart(data, positions) {
+    const labels = data[positions[0]].data.map(pt => pt[0]);
+    const datasets = positions.map(p => ({
+      label:       POS_STYLE[p].label,
+      data:        data[p].data.map(pt => pt[1]),
+      borderColor: POS_STYLE[p].color,
+      borderWidth: 1.75,
+      borderDash:  POS_STYLE[p].borderDash,
+      pointRadius: 0,
+      tension:     0.3,
+      fill:        false,
+    }));
+
+    new Chart(document.getElementById("freqChart").getContext("2d"), {
+      type: "line",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#1a1a1a",
+            borderColor: "#333",
+            borderWidth: 1,
+            titleColor: "#aaa",
+            bodyColor: "#ddd",
+            titleFont: { size: 10 },
+            bodyFont: { size: 11 },
+            callbacks: {
+              title: items => fmtHz(items[0].parsed.x),
+              label: item  => ` ${item.dataset.label}:  ${item.parsed.y.toFixed(1)} dB`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: "logarithmic",
+            min: 20, max: 20000,
+            grid: { color: "#1a1a1a" },
+            ticks: {
+              color: "#444",
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10,
+              callback: v => fmtHz(v),
+            },
+          },
+          y: {
+            title: {
+              display: true,
+              text: "Relative Output (dB below peak)",
+              color: "#444",
+              font: { size: 9 },
+              padding: { bottom: 6 },
+            },
+            min: -30, max: 2,
+            grid: { color: "#1a1a1a" },
+            ticks: { color: "#444", callback: v => `${v} dB` },
+          },
+        },
+      },
+    });
   }
 
   function fmtHz(v) {
@@ -396,8 +373,7 @@
   }
 
   function showError(msg) {
-    document.getElementById("app").innerHTML =
-      `<div class="state-msg">⚠ ${msg}</div>`;
+    document.getElementById("app").innerHTML = `<div class="state-msg">⚠ ${msg}</div>`;
   }
 
 })();
