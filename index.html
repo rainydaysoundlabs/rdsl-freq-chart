@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RDSL · Frequency Response</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #111111;
+    color: #e5e5e5;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    padding: 24px 20px 32px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 12px;
+  }
+  .header-left {}
+  .model-name {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #ffffff;
+    line-height: 1.2;
+  }
+  .model-subtitle {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #666;
+    margin-top: 4px;
+  }
+  .badge {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 5px 9px;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #c0392b;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Chart ── */
+  .chart-wrap {
+    position: relative;
+    background: #151515;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 16px 12px 12px;
+    margin-bottom: 16px;
+  }
+  canvas { display: block; width: 100% !important; }
+
+  /* ── Spec cards ── */
+  .specs-grid {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .specs-grid.two   { grid-template-columns: 1fr 1fr; }
+  .specs-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .specs-grid.one   { grid-template-columns: 1fr; max-width: 280px; }
+
+  .spec-card {
+    background: #161616;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .spec-pos {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .spec-pos.bridge { color: #3b82f6; }
+  .spec-pos.middle { color: #f59e0b; }
+  .spec-pos.neck   { color: #c026d3; }
+
+  .spec-character {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 3px;
+  }
+  .spec-character.bridge { color: #3b82f6; }
+  .spec-character.middle { color: #f59e0b; }
+  .spec-character.neck   { color: #c026d3; }
+
+  .spec-description {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.4;
+    margin-bottom: 10px;
+  }
+  .spec-metrics {
+    display: flex;
+    gap: 14px;
+    border-top: 1px solid #222;
+    padding-top: 8px;
+  }
+  .metric {}
+  .metric-label {
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 2px;
+  }
+  .metric-value {
+    font-size: 12px;
+    font-weight: 500;
+    color: #ccc;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #777;
+  }
+  .legend-line {
+    width: 24px;
+    height: 2px;
+    border-radius: 1px;
+  }
+  .legend-line.bridge { background: #3b82f6; }
+  .legend-line.middle {
+    background: transparent;
+    border-top: 2px dashed #f59e0b;
+    height: 0;
+  }
+  .legend-line.neck {
+    background: transparent;
+    border-top: 2px dashed #c026d3;
+    height: 0;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    border-top: 1px solid #1e1e1e;
+    padding-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .footer-method {
+    font-size: 9px;
+    color: #444;
+    line-height: 1.6;
+    letter-spacing: 0.04em;
+    max-width: 440px;
+  }
+  .footer-brand {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #c0392b;
+    white-space: nowrap;
+  }
+
+  /* ── Error / Loading ── */
+  .state-msg {
+    text-align: center;
+    padding: 60px 20px;
+    color: #555;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="state-msg" id="loading">Loading measurement data…</div>
+</div>
+
+<script>
+(function () {
+
+  const POSITION_ORDER = ["bridge", "middle", "neck"];
+
+  const POS_STYLE = {
+    bridge: {
+      label:     "Bridge",
+      color:     "#3b82f6",
+      borderDash: [],
+    },
+    middle: {
+      label:     "Middle",
+      color:     "#f59e0b",
+      borderDash: [6, 3],
+    },
+    neck: {
+      label:     "Neck",
+      color:     "#c026d3",
+      borderDash: [6, 3],
+    },
+  };
+
+  // ── Resolve ?set= param ────────────────────────────────────────────────────
+  const params = new URLSearchParams(window.location.search);
+  const setKey = (params.get("set") || "").trim().toLowerCase();
+
+  if (!setKey) {
+    showError("No pickup set specified.");
+    return;
+  }
+
+  // ── Fetch JSON ─────────────────────────────────────────────────────────────
+  fetch(`freqsets/${setKey}.json`)
+    .then(r => {
+      if (!r.ok) throw new Error(`Set "${setKey}" not found.`);
+      return r.json();
+    })
+    .then(render)
+    .catch(err => showError(err.message));
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function render(data) {
+    const positions = POSITION_ORDER.filter(p => data[p]);
+    const app = document.getElementById("app");
+
+    app.innerHTML = `
+      <div class="header">
+        <div class="header-left">
+          <div class="model-name">${data.model}</div>
+          <div class="model-subtitle">${data.subtitle}</div>
+        </div>
+        <div class="badge">REW Verified Measurements</div>
+      </div>
+
+      ${buildLegend(positions)}
+
+      <div class="chart-wrap">
+        <canvas id="freqChart" height="260"></canvas>
+      </div>
+
+      <div class="specs-grid ${gridClass(positions)}" id="specCards"></div>
+
+      <div class="footer">
+        <div class="footer-method">
+          Measured with REW V5.40 · SSL 2+ interface · 96kHz / 24-bit · 8Ω reference ·
+          1/12-octave smoothing · normalized to resonant peak (0 dB) ·
+          rig-independent — values are relative, not absolute SPL.
+        </div>
+        <div class="footer-brand">Rainy Day Sound Labs</div>
+      </div>
+    `;
+
+    buildChart(data, positions);
+    buildCards(data, positions);
+  }
+
+  function buildLegend(positions) {
+    if (positions.length < 2) return "";
+    const items = positions.map(p => `
+      <div class="legend-item">
+        <div class="legend-line ${p}"></div>
+        <span>${POS_STYLE[p].label}</span>
+      </div>
+    `).join("");
+    return `<div class="legend">${items}</div>`;
+  }
+
+  function gridClass(positions) {
+    return ["one", "two", "three"][positions.length - 1] || "two";
+  }
+
+  function buildChart(data, positions) {
+    const labels = data[positions[0]].data.map(pt => pt[0]);
+
+    const datasets = positions.map(p => ({
+      label:           POS_STYLE[p].label,
+      data:            data[p].data.map(pt => pt[1]),
+      borderColor:     POS_STYLE[p].color,
+      borderWidth:     1.75,
+      borderDash:      POS_STYLE[p].borderDash,
+      pointRadius:     0,
+      tension:         0.3,
+      fill:            false,
+    }));
+
+    const ctx = document.getElementById("freqChart").getContext("2d");
+
+    new Chart(ctx, {
+      type: "line",
+      data: { labels, datasets },
+      options: {
+        responsive:          true,
+        maintainAspectRatio: false,
+        animation:           false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#1a1a1a",
+            borderColor:     "#333",
+            borderWidth:     1,
+            titleColor:      "#aaa",
+            bodyColor:       "#ddd",
+            titleFont:       { size: 10 },
+            bodyFont:        { size: 11 },
+            callbacks: {
+              title: items => fmtHz(items[0].parsed.x),
+              label: item  => ` ${item.dataset.label}:  ${item.parsed.y.toFixed(1)} dB`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            type:   "logarithmic",
+            min:    20,
+            max:    20000,
+            grid:   { color: "#1e1e1e" },
+            ticks: {
+              color:    "#444",
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10,
+              callback: v => fmtHz(v),
+            },
+          },
+          y: {
+            title: {
+              display: true,
+              text:    "Relative Output (dB below peak)",
+              color:   "#444",
+              font:    { size: 9 },
+              padding: { bottom: 6 },
+            },
+            min:    -30,
+            max:    2,
+            grid:   { color: "#1e1e1e" },
+            ticks:  { color: "#444", callback: v => `${v} dB` },
+          },
+        },
+      },
+    });
+  }
+
+  function buildCards(data, positions) {
+    const grid = document.getElementById("specCards");
+    grid.innerHTML = positions.map(p => {
+      const s = data[p];
+      return `
+        <div class="spec-card">
+          <div class="spec-pos ${p}">${POS_STYLE[p].label} Character</div>
+          <div class="spec-character ${p}">${s.character}</div>
+          <div class="spec-description">${s.description}</div>
+          <div class="spec-metrics">
+            <div class="metric">
+              <div class="metric-label">Resonant Peak</div>
+              <div class="metric-value">${s.peak}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">DCR</div>
+              <div class="metric-value">${s.dcr}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function fmtHz(v) {
+    if (v >= 1000) return (v / 1000).toFixed(v % 1000 === 0 ? 0 : 1) + "k";
+    return Math.round(v) + "";
+  }
+
+  function showError(msg) {
+    document.getElementById("app").innerHTML =
+      `<div class="state-msg">⚠ ${msg}</div>`;
+  }
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+{% comment %}
+  RDSL Frequency Response Visualizer — Shopify Liquid Snippet
+  File: snippets/rdsl-freq-chart.liquid
+  Include on product template with: {% render 'rdsl-freq-chart' %}
+
+  Requires:
+  - Shopify metafield: custom.freq_response_handle (type: single_line_text_field)
+  - Set the metafield value to the model handle, e.g. "skylark", "redhouse", "revival"
+  - Netlify app: https://rdsl-freq-chart.netlify.app/
+{% endcomment %}
+
+{% assign freq_handle = product.metafields.custom.freq_response_handle %}
+
+{% if freq_handle != blank %}
+
+  <div class="rdsl-freq-btn-wrap">
+    <button
+      id="rdsl-freq-btn"
+      class="rdsl-freq-btn"
+      onclick="rdslOpenFreqChart('{{ freq_handle }}')"
+      aria-label="View frequency response chart for {{ product.title }}"
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <polyline points="0,10 3,5 5,8 8,2 11,6 14,4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      View Frequency Response
+    </button>
+  </div>
+
+  <!-- Lightbox overlay -->
+  <div id="rdsl-freq-overlay" style="display:none;" aria-modal="true" role="dialog" aria-label="Frequency response chart">
+    <div id="rdsl-freq-modal">
+      <button id="rdsl-freq-close" onclick="rdslCloseFreqChart()" aria-label="Close">&times;</button>
+      <iframe
+        id="rdsl-freq-iframe"
+        src=""
+        title="Frequency Response — {{ product.title }}"
+        frameborder="0"
+        allowtransparency="true"
+      ></iframe>
+    </div>
+  </div>
+
+  <style>
+    .rdsl-freq-btn-wrap {
+      margin: 12px 0;
+    }
+
+    .rdsl-freq-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: transparent;
+      border: 1px solid #c0392b;
+      color: #c0392b;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .rdsl-freq-btn:hover {
+      background: #c0392b;
+      color: #ffffff;
+    }
+
+    #rdsl-freq-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #rdsl-freq-modal {
+      position: relative;
+      background: #111111;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 780px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+    }
+
+    #rdsl-freq-close {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      background: transparent;
+      border: none;
+      color: #666;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 10;
+      padding: 4px;
+      transition: color 0.15s;
+    }
+
+    #rdsl-freq-close:hover {
+      color: #ffffff;
+    }
+
+    #rdsl-freq-iframe {
+      width: 100%;
+      height: 560px;
+      display: block;
+      border: none;
+      background: #111111;
+    }
+
+    @media (max-width: 600px) {
+      #rdsl-freq-iframe { height: 480px; }
+    }
+  </style>
+
+  <script>
+    var rdslFreqHandle = '{{ freq_handle }}';
+    var rdslFreqBase   = 'https://rdsl-freq-chart.netlify.app/';
+
+    function rdslOpenFreqChart(handle) {
+      var overlay = document.getElementById('rdsl-freq-overlay');
+      var iframe  = document.getElementById('rdsl-freq-iframe');
+      iframe.src  = rdslFreqBase + '?set=' + encodeURIComponent(handle);
+      overlay.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function rdslCloseFreqChart() {
+      var overlay = document.getElementById('rdsl-freq-overlay');
+      var iframe  = document.getElementById('rdsl-freq-iframe');
+      overlay.style.display = 'none';
+      iframe.src  = '';
+      document.body.style.overflow = '';
+    }
+
+    // Close on overlay click (outside modal)
+    document.getElementById('rdsl-freq-overlay').addEventListener('click', function(e) {
+      if (e.target === this) rdslCloseFreqChart();
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') rdslCloseFreqChart();
+    });
+  </script>
+
+{% endif %}
