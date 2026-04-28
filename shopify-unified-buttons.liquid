@@ -1,0 +1,188 @@
+{% assign audio_handle = product.metafields.custom.audio_set_handle %}
+{% assign freq_handle = product.metafields.custom.freq_response_handle %}
+
+{% if audio_handle != blank or freq_handle != blank %}
+
+<style>
+  .rdsl-btn-group {
+    display: inline-flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+  }
+  .rdsl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 4px;
+    color: rgba(255,255,255,0.85);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    line-height: 1;
+  }
+  .rdsl-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: #ffffff;
+    border-color: rgba(255,255,255,0.6);
+  }
+  .rdsl-btn svg {
+    opacity: 0.75;
+    flex-shrink: 0;
+  }
+
+  /* ── Shared modal overlay ── */
+  .rdsl-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: rgba(0,0,0,0.88);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .rdsl-modal-overlay.is-open {
+    display: flex;
+  }
+  .rdsl-modal-inner {
+    position: relative;
+    width: 95%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.9);
+  }
+  .rdsl-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+    padding: 4px 6px;
+    transition: color 0.15s;
+  }
+  .rdsl-modal-close:hover { color: #ffffff; }
+  .rdsl-modal-iframe {
+    width: 100%;
+    display: block;
+    border: none;
+  }
+
+  /* Audio player — portrait modal */
+  #rdsl-audio-modal .rdsl-modal-inner {
+    max-width: 520px;
+    background: #000;
+    border: 1px solid #333;
+  }
+  #rdsl-audio-modal .rdsl-modal-iframe {
+    height: 580px;
+    background: #000;
+  }
+
+  /* Freq chart — landscape modal */
+  #rdsl-freq-modal .rdsl-modal-inner {
+    max-width: 820px;
+    background: #111111;
+    border: 1px solid #2a2a2a;
+  }
+  #rdsl-freq-modal .rdsl-modal-iframe {
+    height: 620px;
+    background: #111111;
+  }
+
+  @media (max-width: 600px) {
+    #rdsl-audio-modal .rdsl-modal-iframe { height: 480px; }
+    #rdsl-freq-modal  .rdsl-modal-iframe { height: 500px; }
+  }
+</style>
+
+<div class="rdsl-btn-group">
+
+  {% if audio_handle != blank %}
+  <button class="rdsl-btn" onclick="rdslOpen('rdsl-audio-modal', 'https://rdslaudioplayer.netlify.app/?set={{ audio_handle }}')">
+    <svg width="11" height="12" viewBox="0 0 11 12" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <polygon points="1,0.5 10.5,6 1,11.5"/>
+    </svg>
+    Listen
+  </button>
+  {% endif %}
+
+  {% if freq_handle != blank %}
+  <button class="rdsl-btn" onclick="rdslOpen('rdsl-freq-modal', 'https://rdsl-freq-chart.netlify.app/?set={{ freq_handle }}')">
+    <svg width="13" height="10" viewBox="0 0 13 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <polyline points="0,8.5 2.5,4 5,7 8,1.5 10.5,5.5 13,3"/>
+    </svg>
+    Frequency Response
+  </button>
+  {% endif %}
+
+</div>
+
+<!-- Audio player modal -->
+{% if audio_handle != blank %}
+<div id="rdsl-audio-modal" class="rdsl-modal-overlay" role="dialog" aria-modal="true" aria-label="Audio player">
+  <div class="rdsl-modal-inner">
+    <button class="rdsl-modal-close" onclick="rdslClose('rdsl-audio-modal')" aria-label="Close">&times;</button>
+    <iframe class="rdsl-modal-iframe" id="rdsl-audio-frame" src="" title="Listen to {{ product.title }}" frameborder="0" allowtransparency="true"></iframe>
+  </div>
+</div>
+{% endif %}
+
+<!-- Freq chart modal -->
+{% if freq_handle != blank %}
+<div id="rdsl-freq-modal" class="rdsl-modal-overlay" role="dialog" aria-modal="true" aria-label="Frequency response chart">
+  <div class="rdsl-modal-inner">
+    <button class="rdsl-modal-close" onclick="rdslClose('rdsl-freq-modal')" aria-label="Close">&times;</button>
+    <iframe class="rdsl-modal-iframe" id="rdsl-freq-frame" src="" title="Frequency Response — {{ product.title }}" frameborder="0" allowtransparency="true"></iframe>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  function rdslOpen(modalId, url) {
+    var modal = document.getElementById(modalId);
+    var frame = modal.querySelector('iframe');
+    frame.src = url;
+    modal.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function rdslClose(modalId) {
+    var modal = document.getElementById(modalId);
+    var frame = modal.querySelector('iframe');
+    modal.classList.remove('is-open');
+    frame.src = '';
+    document.body.style.overflow = '';
+  }
+
+  // Close on overlay click
+  document.querySelectorAll('.rdsl-modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) rdslClose(overlay.id);
+    });
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.rdsl-modal-overlay.is-open').forEach(function(m) {
+        rdslClose(m.id);
+      });
+    }
+  });
+</script>
+
+{% endif %}
