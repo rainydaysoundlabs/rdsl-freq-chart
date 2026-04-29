@@ -6,235 +6,115 @@
 <title>RDSL · Frequency Response</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#111111;color:#e5e5e5;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:13px;padding:24px 20px 32px;min-height:100vh}
 
-  body {
-    background: #111111;
-    color: #e5e5e5;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 13px;
-    padding: 24px 20px 32px;
-    min-height: 100vh;
-  }
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px}
+.brand-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#c0392b;margin-bottom:4px}
+.model-name{font-size:17px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#fff;line-height:1.2}
+.model-subtitle{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-top:4px}
+.badge{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:4px;padding:5px 9px;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#c0392b;white-space:nowrap;flex-shrink:0}
 
-  /* ── Header ── */
-  .header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 18px;
-    gap: 12px;
-  }
-  .brand-label {
-    font-size: 9px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #c0392b;
-    margin-bottom: 5px;
-  }
-  .model-name {
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: #ffffff;
-    line-height: 1.2;
-  }
-  .model-subtitle {
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #555;
-    margin-top: 4px;
-  }
-  .badge {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 4px;
-    padding: 5px 9px;
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #c0392b;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
+/* ── Tabs ── */
+.tab-bar{display:flex;border-bottom:1px solid #222;margin-bottom:18px}
+.tab-btn{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#555;padding:8px 16px 9px;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.tab-btn.active{color:#c0392b;border-bottom-color:#c0392b}
+.tab-btn:hover:not(.active){color:#999}
 
-  /* ── Spec cards ── */
-  .specs-grid {
-    display: grid;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-  .specs-grid.two   { grid-template-columns: 1fr 1fr; }
-  .specs-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-  .specs-grid.one   { grid-template-columns: 1fr; max-width: 320px; }
+/* ── Spec cards ── */
+.specs-grid{display:grid;gap:10px;margin-bottom:16px}
+.specs-grid.two{grid-template-columns:1fr 1fr}
+.specs-grid.three{grid-template-columns:1fr 1fr 1fr}
+.specs-grid.one{grid-template-columns:1fr;max-width:320px}
+.spec-card{background:#161616;border:1px solid #222;border-radius:6px;padding:12px 14px}
+.spec-pos{font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.spec-pos.bridge{color:#3b82f6}.spec-pos.middle{color:#f59e0b}.spec-pos.neck{color:#c026d3}
+.spec-character{font-size:14px;font-weight:600;line-height:1.2;margin-bottom:3px}
+.spec-character.bridge{color:#3b82f6}.spec-character.middle{color:#f59e0b}.spec-character.neck{color:#c026d3}
+.spec-description{font-size:11px;color:#777;line-height:1.4;margin-bottom:10px}
+.spec-metrics{display:flex;gap:14px;border-top:1px solid #1e1e1e;padding-top:8px}
+.metric-label{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:#555;margin-bottom:2px}
+.metric-value{font-size:12px;font-weight:500;color:#ccc}
 
-  .spec-card {
-    background: #161616;
-    border: 1px solid #222;
-    border-radius: 6px;
-    padding: 12px 14px;
-  }
-  .spec-pos {
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .spec-pos.bridge { color: #3b82f6; }
-  .spec-pos.middle { color: #f59e0b; }
-  .spec-pos.neck   { color: #c026d3; }
+/* ── Legend (clickable) ── */
+.legend{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#777;cursor:pointer;user-select:none;transition:opacity .15s;padding:2px 0}
+.legend-item.muted{opacity:.3}
+.legend-item:hover{color:#aaa}
+.legend-line{width:24px;height:2px;border-radius:1px;flex-shrink:0}
+.legend-line.bridge{background:#3b82f6}
+.legend-line.middle{background:transparent;border-top:2px dashed #f59e0b;height:0}
+.legend-line.neck{background:transparent;border-top:2px dashed #c026d3;height:0}
 
-  .spec-character {
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.2;
-    margin-bottom: 3px;
-  }
-  .spec-character.bridge { color: #3b82f6; }
-  .spec-character.middle { color: #f59e0b; }
-  .spec-character.neck   { color: #c026d3; }
+/* ── Chart ── */
+.chart-wrap{background:#151515;border:1px solid #1e1e1e;border-radius:6px;padding:16px 12px 12px;margin-bottom:20px}
+canvas{display:block;width:100%!important}
 
-  .spec-description {
-    font-size: 11px;
-    color: #777;
-    line-height: 1.4;
-    margin-bottom: 10px;
-  }
-  .spec-metrics {
-    display: flex;
-    gap: 14px;
-    border-top: 1px solid #1e1e1e;
-    padding-top: 8px;
-  }
-  .metric-label {
-    font-size: 8px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #555;
-    margin-bottom: 2px;
-  }
-  .metric-value {
-    font-size: 12px;
-    font-weight: 500;
-    color: #ccc;
-  }
+/* ── Tonal profile ── */
+.pos-toggle{display:flex;gap:8px;margin-bottom:20px}
+.pos-btn{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;padding:6px 14px;background:transparent;border:1px solid #2a2a2a;border-radius:3px;color:#555;cursor:pointer;transition:all .15s}
+.pos-btn.active{border-color:#3b82f6;color:#3b82f6}
+.pos-btn.active.neck{border-color:#c026d3;color:#c026d3}
 
-  /* ── Legend ── */
-  .legend {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #777;
-  }
-  .legend-line {
-    width: 24px;
-    height: 2px;
-    border-radius: 1px;
-  }
-  .legend-line.bridge { background: #3b82f6; }
-  .legend-line.middle {
-    background: transparent;
-    border-top: 2px dashed #f59e0b;
-    height: 0;
-  }
-  .legend-line.neck {
-    background: transparent;
-    border-top: 2px dashed #c026d3;
-    height: 0;
-  }
+.profile-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.attr-row{display:grid;grid-template-columns:120px 1fr 32px;align-items:center;gap:14px}
+.attr-name{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#e5e5e5;margin-bottom:2px}
+.attr-copy{font-size:10px;color:#4a4a4a;line-height:1.4}
+.gauge-track{height:3px;background:#222;border-radius:2px;position:relative}
+.gauge-fill{height:100%;border-radius:2px;position:absolute;left:0;top:0;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.gauge-dot{width:9px;height:9px;border-radius:50%;position:absolute;top:50%;transform:translate(-50%,-50%);border:1.5px solid #111111;transition:left .5s cubic-bezier(.4,0,.2,1)}
+.attr-score{font-size:12px;font-weight:500;color:#666;text-align:right;transition:opacity .3s}
+.attr-divider{height:1px;background:#1a1a1a}
 
-  /* ── Chart ── */
-  .chart-wrap {
-    position: relative;
-    background: #151515;
-    border: 1px solid #1e1e1e;
-    border-radius: 6px;
-    padding: 16px 12px 12px;
-    margin-bottom: 20px;
-  }
-  canvas { display: block; width: 100% !important; }
+.profile-note{font-size:9px;color:#333;letter-spacing:.04em;line-height:1.6;margin-bottom:4px}
 
-  /* ── Footer ── */
-  .footer {
-    border-top: 1px solid #1e1e1e;
-    padding-top: 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .footer-method {
-    font-size: 9px;
-    color: #3a3a3a;
-    line-height: 1.6;
-    letter-spacing: 0.04em;
-    max-width: 480px;
-  }
-  .footer-brand {
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #c0392b;
-    white-space: nowrap;
-  }
+/* ── Footer ── */
+.footer{border-top:1px solid #1e1e1e;padding-top:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.footer-method{font-size:9px;color:#333;line-height:1.6;letter-spacing:.04em;max-width:480px}
+.footer-brand{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#c0392b;white-space:nowrap}
 
-  /* ── States ── */
-  .state-msg {
-    text-align: center;
-    padding: 60px 20px;
-    color: #555;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
+.state-msg{text-align:center;padding:60px 20px;color:#555;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+
+.view{display:none}.view.active{display:block}
 </style>
 </head>
 <body>
-
-<div id="app">
-  <div class="state-msg" id="loading">Loading measurement data…</div>
-</div>
+<div id="app"><div class="state-msg">Loading measurement data…</div></div>
 
 <script>
-(function () {
-
-  const POSITION_ORDER = ["bridge", "middle", "neck"];
-
+(function(){
+  const POS_ORDER = ["bridge","middle","neck"];
   const POS_STYLE = {
-    bridge: { label: "Bridge", color: "#3b82f6", borderDash: [] },
-    middle: { label: "Middle", color: "#f59e0b", borderDash: [6, 3] },
-    neck:   { label: "Neck",   color: "#c026d3", borderDash: [6, 3] },
+    bridge:{label:"Bridge",color:"#3b82f6",dash:[]},
+    middle:{label:"Middle",color:"#f59e0b",dash:[6,3]},
+    neck:  {label:"Neck",  color:"#c026d3",dash:[6,3]},
   };
+  const ATTRS = [
+    {key:"output",   label:"Output",   copy:"How hard it hits the amp",            color:"#3b82f6"},
+    {key:"treble",   label:"Treble",   copy:"Stays out of the shrill zone",         color:"#c026d3"},
+    {key:"midrange", label:"Midrange", copy:"Where guitars live and leads cut",     color:"#c0392b"},
+    {key:"bass",     label:"Bass",     copy:"Body without mud",                     color:"#f59e0b"},
+    {key:"attack",   label:"Attack",   copy:"Snappy enough to keep up with you",   color:"#10b981"},
+  ];
 
   const params = new URLSearchParams(window.location.search);
-  const setKey = (params.get("set") || "").trim().toLowerCase();
-
-  if (!setKey) { showError("No pickup set specified."); return; }
+  const setKey = (params.get("set")||"").trim().toLowerCase();
+  if(!setKey){showError("No pickup set specified.");return;}
 
   fetch(`freqsets/${setKey}.json`)
-    .then(r => { if (!r.ok) throw new Error(`Set "${setKey}" not found.`); return r.json(); })
+    .then(r=>{if(!r.ok)throw new Error(`Set "${setKey}" not found.`);return r.json();})
     .then(render)
-    .catch(err => showError(err.message));
+    .catch(err=>showError(err.message));
 
-  function render(data) {
-    const positions = POSITION_ORDER.filter(p => data[p]);
+  let activeChart = null;
+
+  function render(data){
+    const positions = POS_ORDER.filter(p=>data[p]);
     const app = document.getElementById("app");
 
     app.innerHTML = `
       <div class="header">
-        <div class="header-left">
+        <div>
           <div class="brand-label">Rainy Day Sound Labs</div>
           <div class="model-name">${data.model}</div>
           <div class="model-subtitle">${data.subtitle}</div>
@@ -242,138 +122,211 @@
         <div class="badge">REW Verified Measurements</div>
       </div>
 
-      <div class="specs-grid ${gridClass(positions)}" id="specCards"></div>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('freq',this)">Frequency Response</button>
+        <button class="tab-btn" onclick="switchTab('profile',this)">Tonal Profile</button>
+      </div>
 
-      ${buildLegend(positions)}
+      <div id="view-freq" class="view active">
+        <div class="specs-grid ${gridClass(positions)}" id="specCards"></div>
+        ${buildLegendHTML(positions)}
+        <div class="chart-wrap"><canvas id="freqChart" height="260"></canvas></div>
+      </div>
 
-      <div class="chart-wrap">
-        <canvas id="freqChart" height="260"></canvas>
+      <div id="view-profile" class="view">
+        ${buildProfileHTML(data, positions)}
       </div>
 
       <div class="footer">
         <div class="footer-method">
           Measured with REW V5.40 · SSL 2+ interface · 96kHz / 24-bit · 8Ω reference ·
-          1/12-octave smoothing · normalized to resonant peak (0 dB) ·
-          rig-independent — values are relative, not absolute SPL.
+          1/12-octave smoothing · normalized to resonant peak (0 dB) · rig-independent — values are relative, not absolute SPL.
         </div>
         <div class="footer-brand">Rainy Day Sound Labs</div>
-      </div>
-    `;
+      </div>`;
 
     buildCards(data, positions);
     buildChart(data, positions);
+    if(data.scores) initProfile(data);
   }
 
-  function buildLegend(positions) {
-    if (positions.length < 2) return "";
-    const items = positions.map(p => `
-      <div class="legend-item">
+  window.switchTab = function(tab, btn){
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("view-"+tab).classList.add("active");
+  };
+
+  function buildLegendHTML(positions){
+    if(positions.length < 2) return "";
+    const items = positions.map(p=>`
+      <div class="legend-item" data-pos="${p}" onclick="togglePos('${p}')">
         <div class="legend-line ${p}"></div>
         <span>${POS_STYLE[p].label}</span>
       </div>`).join("");
     return `<div class="legend">${items}</div>`;
   }
 
-  function gridClass(positions) {
-    return ["one", "two", "three"][positions.length - 1] || "two";
+  window.togglePos = function(pos){
+    if(!activeChart) return;
+    const idx = POS_ORDER.filter(p=>activeChart.data.datasets.find(d=>d.label===POS_STYLE[p].label)).indexOf(
+      POS_ORDER.find(p=>POS_STYLE[p].label===activeChart.data.datasets.find(d=>d.label===POS_STYLE[pos].label)?.label)
+    );
+    const dsIdx = activeChart.data.datasets.findIndex(d=>d.label===POS_STYLE[pos].label);
+    if(dsIdx === -1) return;
+    const meta = activeChart.getDatasetMeta(dsIdx);
+    meta.hidden = !meta.hidden;
+    activeChart.update();
+    const el = document.querySelector(`.legend-item[data-pos="${pos}"]`);
+    if(el) el.classList.toggle("muted", meta.hidden);
+  };
+
+  function gridClass(positions){
+    return ["one","two","three"][positions.length-1]||"two";
   }
 
-  function buildCards(data, positions) {
-    document.getElementById("specCards").innerHTML = positions.map(p => {
+  function buildCards(data, positions){
+    document.getElementById("specCards").innerHTML = positions.map(p=>{
       const s = data[p];
-      return `
-        <div class="spec-card">
-          <div class="spec-pos ${p}">${POS_STYLE[p].label} Character</div>
-          <div class="spec-character ${p}">${s.character}</div>
-          <div class="spec-description">${s.description}</div>
-          <div class="spec-metrics">
-            <div class="metric">
-              <div class="metric-label">Resonant Peak</div>
-              <div class="metric-value">${s.peak}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">DCR</div>
-              <div class="metric-value">${s.dcr}</div>
-            </div>
-          </div>
-        </div>`;
+      return `<div class="spec-card">
+        <div class="spec-pos ${p}">${POS_STYLE[p].label} Character</div>
+        <div class="spec-character ${p}">${s.character}</div>
+        <div class="spec-description">${s.description}</div>
+        <div class="spec-metrics">
+          <div class="metric"><div class="metric-label">Resonant Peak</div><div class="metric-value">${s.peak}</div></div>
+          <div class="metric"><div class="metric-label">DCR</div><div class="metric-value">${s.dcr}</div></div>
+        </div>
+      </div>`;
     }).join("");
   }
 
-  function buildChart(data, positions) {
-    const labels = data[positions[0]].data.map(pt => pt[0]);
-    const datasets = positions.map(p => ({
+  function buildChart(data, positions){
+    const labels = data[positions[0]].data.map(pt=>pt[0]);
+    const datasets = positions.map(p=>({
       label:       POS_STYLE[p].label,
-      data:        data[p].data.map(pt => pt[1]),
+      data:        data[p].data.map(pt=>pt[1]),
       borderColor: POS_STYLE[p].color,
       borderWidth: 1.75,
-      borderDash:  POS_STYLE[p].borderDash,
+      borderDash:  POS_STYLE[p].dash,
       pointRadius: 0,
       tension:     0.3,
       fill:        false,
     }));
-
-    new Chart(document.getElementById("freqChart").getContext("2d"), {
-      type: "line",
-      data: { labels, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        interaction: { mode: "index", intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: "#1a1a1a",
-            borderColor: "#333",
-            borderWidth: 1,
-            titleColor: "#aaa",
-            bodyColor: "#ddd",
-            titleFont: { size: 10 },
-            bodyFont: { size: 11 },
-            callbacks: {
-              title: items => fmtHz(items[0].parsed.x),
-              label: item  => ` ${item.dataset.label}:  ${item.parsed.y.toFixed(1)} dB`,
+    const ctx = document.getElementById("freqChart").getContext("2d");
+    activeChart = new Chart(ctx,{
+      type:"line",
+      data:{labels,datasets},
+      options:{
+        responsive:true,maintainAspectRatio:false,animation:false,
+        interaction:{mode:"index",intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:"#1a1a1a",borderColor:"#333",borderWidth:1,
+            titleColor:"#aaa",bodyColor:"#ddd",titleFont:{size:10},bodyFont:{size:11},
+            callbacks:{
+              title:items=>fmtHz(items[0].parsed.x),
+              label:item=>` ${item.dataset.label}:  ${item.parsed.y.toFixed(1)} dB`,
             },
           },
         },
-        scales: {
-          x: {
-            type: "logarithmic",
-            min: 20, max: 20000,
-            grid: { color: "#1a1a1a" },
-            ticks: {
-              color: "#444",
-              maxRotation: 0,
-              autoSkip: true,
-              maxTicksLimit: 10,
-              callback: v => fmtHz(v),
-            },
-          },
-          y: {
-            title: {
-              display: true,
-              text: "Relative Output (dB below peak)",
-              color: "#444",
-              font: { size: 9 },
-              padding: { bottom: 6 },
-            },
-            min: -30, max: 2,
-            grid: { color: "#1a1a1a" },
-            ticks: { color: "#444", callback: v => `${v} dB` },
-          },
+        scales:{
+          x:{type:"logarithmic",min:20,max:20000,grid:{color:"#1a1a1a"},
+            ticks:{color:"#444",maxRotation:0,autoSkip:true,maxTicksLimit:10,callback:v=>fmtHz(v)}},
+          y:{title:{display:true,text:"Relative Output (dB below peak)",color:"#444",font:{size:9},padding:{bottom:6}},
+            min:-30,max:2,grid:{color:"#1a1a1a"},
+            ticks:{color:"#444",callback:v=>`${v} dB`}},
         },
       },
     });
   }
 
-  function fmtHz(v) {
-    if (v >= 1000) return (v / 1000).toFixed(v % 1000 === 0 ? 0 : 1) + "k";
-    return Math.round(v) + "";
+  // ── Tonal profile ───────────────────────────────────────────────────────────
+
+  function buildProfileHTML(data, positions){
+    if(!data.scores) return `<div class="state-msg">Profile data not available.</div>`;
+    const sd = data.scores_display;
+
+    let toggleHTML = "";
+    if(sd === "toggle"){
+      toggleHTML = `<div class="pos-toggle">
+        <button class="pos-btn active" id="ptgl-bridge" onclick="switchPosScore('bridge')">Bridge</button>
+        <button class="pos-btn neck"   id="ptgl-neck"   onclick="switchPosScore('neck')">Neck</button>
+      </div>`;
+    }
+
+    const noteText = sd === "average"
+      ? "Scores reflect calibrated set · derived from REW measurement data"
+      : sd === "toggle"
+        ? "Scores derived from REW measurement data · toggle between positions"
+        : "Scores derived from REW measurement data";
+
+    const gaugeRows = ATTRS.map((attr,i)=>`
+      ${i > 0 ? '<div class="attr-divider"></div>' : ''}
+      <div class="attr-row">
+        <div>
+          <div class="attr-name">${attr.label}</div>
+          <div class="attr-copy">${attr.copy}</div>
+        </div>
+        <div class="gauge-track">
+          <div class="gauge-fill" id="gf-${attr.key}" style="background:${attr.color};width:0%"></div>
+          <div class="gauge-dot"  id="gd-${attr.key}" style="background:${attr.color};left:0%"></div>
+        </div>
+        <div class="attr-score" id="gs-${attr.key}">—</div>
+      </div>`).join("");
+
+    return `
+      ${toggleHTML}
+      <div class="profile-grid">${gaugeRows}</div>
+      <div class="profile-note">${noteText}</div>`;
   }
 
-  function showError(msg) {
-    document.getElementById("app").innerHTML = `<div class="state-msg">⚠ ${msg}</div>`;
+  let currentScoreKey = "bridge";
+
+  function initProfile(data){
+    const sd = data.scores_display;
+    // Determine initial score key
+    if(sd === "toggle")        currentScoreKey = "bridge";
+    else if(sd === "solo")     currentScoreKey = "solo";
+    else                       currentScoreKey = "set";
+    updateGauges(data.scores[currentScoreKey]);
+
+    window.switchPosScore = function(pos){
+      currentScoreKey = pos;
+      document.querySelectorAll(".pos-btn").forEach(b=>{
+        b.classList.remove("active");
+        b.style.borderColor=""; b.style.color="";
+      });
+      const btn = document.getElementById("ptgl-"+pos);
+      if(btn){
+        btn.classList.add("active");
+      }
+      updateGauges(data.scores[pos]);
+    };
+  }
+
+  function updateGauges(scores){
+    if(!scores) return;
+    ATTRS.forEach(attr=>{
+      const val = scores[attr.key];
+      if(val === undefined) return;
+      const pct = Math.max(0, Math.min(100, ((val - 1) / 4) * 100));
+      const fill  = document.getElementById("gf-"+attr.key);
+      const dot   = document.getElementById("gd-"+attr.key);
+      const score = document.getElementById("gs-"+attr.key);
+      if(fill)  fill.style.width  = pct + "%";
+      if(dot)   dot.style.left    = pct + "%";
+      if(score) score.textContent = val.toFixed(1);
+    });
+  }
+
+  function fmtHz(v){
+    if(v>=1000) return (v/1000).toFixed(v%1000===0?0:1)+"k";
+    return Math.round(v)+"";
+  }
+
+  function showError(msg){
+    document.getElementById("app").innerHTML=`<div class="state-msg">⚠ ${msg}</div>`;
   }
 
 })();
