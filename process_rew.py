@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-RDSL REW Processing Pipeline v4
+RDSL REW Processing Pipeline v5
 - Auto-detects W(W) vs SPL(dB) REW format
-- Per-family normalization (tele / strat / hb / p90)
-- Scores mapped to 2.0–5.0 (no pickup ever hits absolute floor)
-- Minimum spread check: tiny intra-family differences → midpoint score
-- Attack = inverse DCR (lower output = more touch-sensitive/dynamic)
+- Fixed physical anchor ranges per family for Output, Treble, Dynamics
+  (prevents small-family distortion — e.g. 2-model HB family)
+- Padded catalog range for Midrange and Bass (curve-derived, family-relative)
+- Scores 2.0–5.0 (floor prevents any pickup anchoring at absolute minimum)
+- Dynamics = inverse DCR (lower output = more touch-sensitive)
 """
 
 import json, math, os, bisect
@@ -17,14 +18,13 @@ F_MIN    = 20.0
 F_MAX    = 20000.0
 OCTAVE_SMOOTH = 1/12
 
-# Minimum meaningful spread per attribute (raw units).
-# If family range is below this, all models score 3.5 for that attribute.
-MIN_SPREAD = {
-    "output":   1.2,   # kΩ
-    "treble":   0.5,   # kHz
-    "midrange": 1.5,   # dB
-    "bass":     1.5,   # dB
-    "attack":   0.003, # 1/kΩ
+# Fixed physical anchor ranges per family
+# output = DCR kΩ, treble = resonant peak kHz, dynamics = 1/DCR
+ANCHORS = {
+    "tele":  {"output": (4.5, 10.5), "treble": (5.0, 12.0), "dynamics": (1/10.5, 1/4.5)},
+    "strat": {"output": (4.5, 10.5), "treble": (5.0, 11.0), "dynamics": (1/10.5, 1/4.5)},
+    "p90":   {"output": (5.5, 13.0), "treble": (3.5,  7.0), "dynamics": (1/13.0, 1/5.5)},
+    "hb":    {"output": (6.0, 20.0), "treble": (3.5,  7.5), "dynamics": (1/20.0, 1/6.0)},
 }
 
 MODELS = [
@@ -110,63 +110,31 @@ def raw_scores(data, dcr_str, peak_str):
         "treble":   parse_peak_khz(peak_str),
         "midrange": band_avg(data, 250, 2000),
         "bass":     band_avg(data, 60, 250),
-        "attack":   1.0 / dcr,   # inverse DCR: lower output = more touch-sensitive/dynamic
+        "dynamics": 1.0 / dcr,
     }
 
 def avg_raw(raws_list):
-    attrs = ["output","treble","midrange","bass","attack"]
+    attrs = ["output","treble","midrange","bass","dynamics"]
     return {a: sum(r[a] for r in raws_list) / len(raws_list) for a in attrs}
 
-def normalize_family(raw_store_for_family, handles_in_family):
-    """
-    Normalize scores within a family to 2.0–5.0.
-    If the spread for an attribute is below MIN_SPREAD, all models
-    score 3.5 (differences too small to be meaningful).
-    Returns: {handle: {score_key: {attr: score}}}
-    """
-    attrs = ["output","treble","midrange","bass","attack"]
+def scale(val, lo, hi):
+    """Map val from [lo,hi] to [2.0,5.0], clamped."""
+    if hi == lo: return 3.5
+    return round(max(2.0, min(5.0, 2.0 + 3.0 * (val - lo) / (hi - lo))), 2)
 
-    # Collect all raw values per attribute across all score keys in the family
-    all_vals = {a: [] for a in attrs}
-    for h in handles_in_family:
-        for score_key, rs in raw_store_for_family.get(h, {}).items():
-            for a in attrs:
-                all_vals[a].append(rs[a])
-
-    # Compute bounds and check spread
-    bounds = {}
-    for a in attrs:
-        lo = min(all_vals[a]) if all_vals[a] else 0
-        hi = max(all_vals[a]) if all_vals[a] else 1
-        spread = hi - lo
-        bounds[a] = (lo, hi, spread >= MIN_SPREAD[a])
-
-    # Normalize
-    result = {}
-    for h in handles_in_family:
-        result[h] = {}
-        for score_key, rs in raw_store_for_family.get(h, {}).items():
-            result[h][score_key] = {}
-            for a in attrs:
-                lo, hi, meaningful = bounds[a]
-                if not meaningful:
-                    result[h][score_key][a] = 3.5
-                elif hi == lo:
-                    result[h][score_key][a] = 3.5
-                else:
-                    raw = 2.0 + 3.0 * (rs[a] - lo) / (hi - lo)
-                    result[h][score_key][a] = round(max(2.0, min(5.0, raw)), 2)
-    return result
-
-import bisect
+def padded_bounds(values, pad=0.5):
+    """Expand catalog min/max by pad fraction to avoid extremes."""
+    lo, hi = min(values), max(values)
+    spread = (hi - lo) if hi != lo else 1.0
+    return lo - spread * pad, hi + spread * pad
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
 
-    # Pass 1 — process REW files, collect raw scores
-    processed  = {}
+    # Pass 1 — process all REW files, collect raw scores
+    processed = {}
     raw_store  = {}
 
     for model in MODELS:
@@ -185,7 +153,7 @@ def main():
             data = smooth_and_resample(freqs, dbs)
             processed[handle][pos] = data
             rs   = raw_scores(data, spec["dcr"], spec["peak"])
-            print(f"  . {pos} [{fmt}]  out={rs['output']:.2f}  treble={rs['treble']:.2f}  mid={rs['midrange']:.2f}  bass={rs['bass']:.2f}  atk={rs['attack']:.4f}")
+            print(f"  . {pos} [{fmt}]  out={rs['output']:.2f}  treble={rs['treble']:.2f}  mid={rs['midrange']:.2f}  bass={rs['bass']:.2f}  dyn={rs['dynamics']:.4f}")
 
             if sd == "toggle":
                 raw_store[handle][pos] = rs
@@ -197,40 +165,41 @@ def main():
         if sd == "average" and "_parts" in raw_store[handle]:
             raw_store[handle]["set"] = avg_raw(raw_store[handle].pop("_parts"))
 
-    # Normalize per family
-    families = {}
+    # Collect midrange + bass values per family for padded bounds
+    family_curve_vals = {}
     for model in MODELS:
-        families.setdefault(model["family"], []).append(model["handle"])
+        fam = model["family"]
+        family_curve_vals.setdefault(fam, {"midrange": [], "bass": []})
+        for sk, rs in raw_store.get(model["handle"], {}).items():
+            family_curve_vals[fam]["midrange"].append(rs["midrange"])
+            family_curve_vals[fam]["bass"].append(rs["bass"])
 
-    all_normalized = {}
-    for fam, handles in families.items():
-        fam_raw = {h: raw_store[h] for h in handles if h in raw_store}
-        normalized = normalize_family(fam_raw, handles)
-        all_normalized.update(normalized)
-
-        print(f"\nFamily [{fam}] — spread check:")
-        attrs = ["output","treble","midrange","bass","attack"]
-        all_vals = {a: [] for a in attrs}
-        for h in handles:
-            for sk, rs in raw_store.get(h, {}).items():
-                for a in attrs:
-                    all_vals[a].append(rs[a])
-        for a in attrs:
-            if all_vals[a]:
-                spread = max(all_vals[a]) - min(all_vals[a])
-                flag = "" if spread >= MIN_SPREAD[a] else " [FLAT -> 3.5]"
-                print(f"  {a}: spread={spread:.4f} (min={MIN_SPREAD[a]}){flag}")
-
-    # Pass 2 — write JSON
+    # Pass 2 — normalize and write JSON
     for model in MODELS:
         handle = model["handle"]
+        fam    = model["family"]
         if handle not in processed or not processed[handle]: continue
+
+        anch = ANCHORS[fam]
+        mid_lo, mid_hi = padded_bounds(family_curve_vals[fam]["midrange"])
+        bas_lo, bas_hi = padded_bounds(family_curve_vals[fam]["bass"])
+
+        scores_out = {}
+        for sk, rs in raw_store[handle].items():
+            scores_out[sk] = {
+                "output":   scale(rs["output"],   *anch["output"]),
+                "treble":   scale(rs["treble"],   *anch["treble"]),
+                "midrange": scale(rs["midrange"], mid_lo, mid_hi),
+                "bass":     scale(rs["bass"],     bas_lo, bas_hi),
+                "dynamics": scale(rs["dynamics"], *anch["dynamics"]),
+            }
+            print(f"  {handle}/{sk}: out={scores_out[sk]['output']}  treble={scores_out[sk]['treble']}  mid={scores_out[sk]['midrange']}  bass={scores_out[sk]['bass']}  dyn={scores_out[sk]['dynamics']}")
 
         out = {
             "model":          model["model"],
             "subtitle":       model["subtitle"],
             "scores_display": model["scores_display"],
-            "scores":         all_normalized.get(handle, {}),
+            "scores":         scores_out,
         }
         for pos, spec in model["positions"].items():
             if pos not in processed[handle]: continue
